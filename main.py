@@ -96,6 +96,7 @@ for i in range (n_runs):
     best_init_y = init_y.max().item()
     print (f"Best point performed: {best_init_y}")
 
+print ("that's all for 26/06/22")
 
 
 
