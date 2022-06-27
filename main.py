@@ -52,7 +52,7 @@ def generate_init_data(n):
 # print (generate_init_data(20))
 
 # Build model
-init_data_no = 5
+init_data_no = 20
 init_x, init_y, best_init_y = generate_init_data(init_data_no)
 bounds = torch.tensor([[0.], [10.]])
 
@@ -96,7 +96,7 @@ def generate_next_sample(init_x, init_y, best_init_y, bounds, n):
     return next_sample
 
 
-n_runs = 2 # no. of BO runs
+n_runs = 10 # no. of BO runs
 for i in range(n_runs):
     print(f"No. of optimisation runs:{i}")
     next_sample = generate_next_sample(init_x, init_y, best_init_y, bounds, n=1)
