@@ -33,7 +33,7 @@ ax.plot(x, y_true)
 ax.set_xlabel('x')
 ax.set_ylabel('f(x)')
 ax.set_title('1D function')
-# plt.show()
+plt.show()
 
 
 # Data conditioning
@@ -96,7 +96,7 @@ def generate_next_sample(init_x, init_y, best_init_y, bounds, n):
     return next_sample
 
 
-n_runs = 10 # no. of BO runs
+n_runs = 20 # no. of BO runs
 for i in range(n_runs):
     print(f"No. of optimisation runs:{i}")
     next_sample = generate_next_sample(init_x, init_y, best_init_y, bounds, n=1)
