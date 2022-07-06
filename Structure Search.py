@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from matplotlib import rcParams
 import torch
-from botorch.models import SingleTaskGP, ModelListGP
+from botorch.models import SingleTaskGP, ModelListGP, MultiTaskGP
 from botorch.fit import fit_gpytorch_model
 from botorch.utils import standardize
 from gpytorch.mlls import ExactMarginalLogLikelihood
@@ -11,37 +11,56 @@ from botorch.acquisition.monte_carlo import qExpectedImprovement
 from botorch.optim import optimize_acqf
 from botorch.cross_validation import gen_loo_cv_folds
 import math
+import GPy
+import wget
 
-# Adapted from Milica's file
-# Here we load AMBER data from a file and build an GPR model.
-def load_model(filename):
-    """Recreates a GPR model from saved parameters and data. """
 
-    # load saved data
-    data = np.load(filename)
-    dim = data["X"].shape[1]
+# Model data
+data = np.load('model_2D_E0.npz')
+dim = data["X"].shape[1]
+# dim[X] = 2
 
-    # create kernel and mean functions
-    kernel = GPy.kern.StdPeriodic(input_dim=dim, ARD1=True, ARD2=True)
-    mean_func = GPy.mappings.Constant(dim, 1)
+# print(data['X'][:,0])
+X1 = torch.from_numpy(data['X'][:,0])
+X2 = torch.from_numpy(data['X'][:,1])
+i1, i2 = torch.zeros(len(X1)), torch.ones(len(X2))
+train_X = torch.stack([
+    torch.cat([X1, i1], -1), torch.cat([X2, i2], -1),
+])
+train_Y = data['Y']
+best_init_y = train_Y.max().item()
+bounds = torch.tensor([[0.], [10.]])
 
-    # create model
-    model = GPy.models.GPRegression(
-        data["X"], data["Y"], kernel=kernel, mean_function=mean_func
-    )
+def generate_next_sample(train_X, train_Y, best_init_y, bounds, n):
+    model = MultiTaskGP(train_X, train_Y, task_feature=-1)
+    mll = ExactMarginalLogLikelihood(model.likelihood, model)
+    fit_gpytorch_model(mll)
+    EI = qExpectedImprovement(
+        model=model,
+        best_f=best_init_y)
+    next_sample, _ = optimize_acqf(
+        acq_function=EI,
+        bounds=bounds,
+        q=n,
+        num_restarts=200,
+        raw_samples=512,
+        options={"batch_limit": 5, "maxiter": 200})
+    return next_sample
 
-    # set model params
-    model[:] = data["params"]
-    model.fix()
-    model.parameters_changed()
+n_runs = 10 # no. of BO runs
+for i in range(n_runs):
+    print(f"No. of optimisation runs:{i}")
+    next_sample = generate_next_sample(train_X, train_Y, best_init_y, bounds, n=1)
+    new_result = f(next_sample).unsqueeze(-1)
 
-    return model
+    print(f"The next sample is: {next_sample}")
 
-# Here, we define the AMBER emulator for a 2D structure search in d1-d4
+    train_X = torch.cat([train_X, next_sample])
+    train_Y = torch.cat([train_Y, new_result])
+    best_init_y = init_y.max().item()
+    print(f"Best point performed: {best_init_y}")
 
-!wget https://gitlab.com/joalof/bigmax_boss_tutorials/-/raw/319e6ba6dbbf37ac456abc6dac7f4de5ef097312/data/model_2D_E0.npz
-AMBER_emulator = load_model("model_2D_E0.npz")
 
-# Here, we define the utility function that retrieves data from the AMBER emulator.
-def f(X):
-    return AMBER_emulator.predict(np.atleast_2d(X))[0]
+
+
+

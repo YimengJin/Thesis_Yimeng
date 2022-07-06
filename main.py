@@ -16,7 +16,6 @@ import math
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 dtype = torch.float
 
-
 # Define function value
 def f(X):
     y = []
