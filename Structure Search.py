@@ -16,7 +16,7 @@ import wget
 
 
 # Model data
-data = np.load('model_2D_E0.npz')
+
 dim = data["X"].shape[1]
 # dim[X] = 2
 
